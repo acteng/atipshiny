@@ -2,15 +2,13 @@ library(tidyverse)
 library(shiny)
 library(shinydashboard)
 library(sf)
-library(tmap)
 library(mapedit)
 library(leaflet)
-tmap_mode("view")
-pdf(file = NULL)
 
-
-map <- leaflet() %>%
-  addTiles()
+region = ukboundaries::leeds
+map = leaflet(data = region) %>%
+  addTiles() %>% 
+  addPolylines()
 
 
 if(!file.exists("intervention.geojson")) {
@@ -37,6 +35,7 @@ ui = dashboardPage(
       
     box(
       width = 4, 
+      downloadButton("downloadData", "Download"),
       textInput(inputId = "name", label = "Intervention name", value = "Intervention x on road y in town z"),
       textInput(inputId = "promoter", label = "Promoter", value = "Transport for ..."),
       sliderInput(inputId = "trips_without", label = "Number of trips per day without the proposed intervention", min = 0, max = 1000, value = 100),
@@ -45,19 +44,10 @@ ui = dashboardPage(
       ),
     box(
       width = 8,
-      # tmapOutput("map")
-      # Sidebar with a ui for grabbing mapedit data
-      sidebarLayout(
-        sidebarPanel(
-          actionButton('save', 'Save from Map'),
-          downloadButton("downloadData", "Download")
-        ),
-        
         # add map
         mainPanel(
           editModUI("map")
         )
-      )
       )
     )
   )
