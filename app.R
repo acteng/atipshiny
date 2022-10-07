@@ -3,8 +3,15 @@ library(shiny)
 library(shinydashboard)
 library(sf)
 library(tmap)
+library(mapedit)
+library(leaflet)
 tmap_mode("view")
 pdf(file = NULL)
+
+
+map <- leaflet() %>%
+  addTiles()
+
 
 if(!file.exists("intervention.geojson")) {
 library(osmdata)
@@ -42,7 +49,8 @@ ui = dashboardPage(
       # Sidebar with a ui for grabbing mapedit data
       sidebarLayout(
         sidebarPanel(
-          actionButton('save', 'Save from Map')
+          actionButton('save', 'Save from Map'),
+          downloadButton("downloadData", "Download")
         ),
         
         # add map
@@ -56,10 +64,39 @@ ui = dashboardPage(
 )
 
 server = function(input, output) {
-  output$map = renderTmap(
-    qtm(intervention) + tm_view(set.view = 12)
-    # qtm()
-    )
+  # output$map = renderTmap(
+  #   qtm(intervention) + tm_view(set.view = 12)
+  #   # qtm()
+  #   )
+  edits <- callModule(
+    editMod,
+    leafmap = map,
+    id = "map"
+  )
+  
+  observeEvent(input$save, {
+    
+    geom <- edits()$finished
+    
+    if (!is.null(geom)) {
+      assign('new_geom', geom, envir = .GlobalEnv)
+      sf::write_sf(geom, 'new_geom.geojson', delete_layer = TRUE, delete_dsn = TRUE)
+    }
+    
+  })
+  
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste("input", ".geojson", sep = "")
+    },
+    content = function(file) {
+      geom <- edits()$finished
+      
+            sf::write_sf(geom, file, delete_layer = TRUE, delete_dsn = TRUE)
+
+    }
+  )
+  
 }
 
 shinyApp(ui, server)
