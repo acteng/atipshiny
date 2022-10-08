@@ -45,7 +45,7 @@ server = function(input, output) {
   
   output$downloadData <- downloadHandler(
     filename = function() {
-      paste("input", ".geojson", sep = "")
+      paste("interventions", ".geojson", sep = "")
     },
     content = function(file) {
       geom <- edits()$finished
