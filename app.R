@@ -25,8 +25,8 @@ map = leaflet(data = region) %>%
 
 ui = bs4DashPage(fullscreen = FALSE, dark = FALSE,
   dashboardHeader(title = "ATIP"),
-  dashboardSidebar(collapsed = FALSE, skin = "gray",
-    width = "50%", # Changing width makes body fail
+  dashboardSidebar(collapsed = TRUE, skin = "gray",
+    width = "40%", # Changing width makes body fail
     minified = FALSE,
     checkboxInput(inputId = "edit", label = "Map edits complete", value = FALSE),
     conditionalPanel(condition = "input.edit == true", dt_output('Add data', 'x6')),
