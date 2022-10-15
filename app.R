@@ -28,11 +28,12 @@ ui = bs4DashPage(fullscreen = FALSE, dark = FALSE,
   dashboardSidebar(collapsed = FALSE, skin = "gray",
     width = "50%", # Changing width makes body fail
     minified = FALSE,
-    dt_output('Add data', 'x2'),
-    textInput(inputId = "name", label = "Intervention name", value = "E.g. Chapeltown Active Travel Neighbourhood"),
-    textInput(inputId = "description", label = "Description", value = "Brief description of scheme"),
-    dateInput(inputId = "completion_date", label = "Planned completion date"),
-    shinyWidgets::currencyInput(inputId = "budget_capital", label = "Budget (capital)", format = "British", value = 10000),
+    numericInput(inputId = "nrows", label = "Number of interventions", value = 2),
+    dt_output('Add data', 'x6'),
+    # textInput(inputId = "name", label = "Intervention name", value = "E.g. Chapeltown Active Travel Neighbourhood"),
+    # textInput(inputId = "description", label = "Description", value = "Brief description of scheme"),
+    # dateInput(inputId = "completion_date", label = "Planned completion date"),
+    # shinyWidgets::currencyInput(inputId = "budget_capital", label = "Budget (capital)", format = "British", value = 10000),
     div(style="position:relative; left:calc(25%);",     downloadButton("downloadData", "Download"))
   ),
   bs4DashBody(
@@ -49,27 +50,39 @@ server = function(input, output) {
     id = "map"
   )
   
+  d_sf = sf::read_sf("intervention.geojson")
+  d_df = sf::st_drop_geometry(d_sf)
+  
+  observeEvent(input$nrows, {
+    d_df <<- d_df[rep(1, input$nrows), ]
+  })
+  
+  message(d_df$name, "1")
+  
+  output$x6 = render_dt(d_df, 'row')
+  
+  # edit a row
+  observeEvent(input$x6_cell_edit, {
+    d_df <<- editData(d_df, input$x6_cell_edit, 'x6')
+    message(d_df$name, "2")
+  })
+  
   output$downloadData <- downloadHandler(
     filename = function() {
       paste("interventions", ".geojson", sep = "")
     },
     content = function(file) {
+      message(d_df$name, "3")
       geom <- edits()$finished
       geom = sf::st_sf(
-        data.frame(
-          name = input$name,
-          description = input$description,
-          completion_date = input$completion_date,
-          budget_capital = input$budget_capital
-          ),
+        d_df,
         geometry = geom$geometry
       )
       sf::write_sf(geom, file, delete_layer = TRUE, delete_dsn = TRUE)
     }
   )
   
-  d2 = iris
-  output$x2 = render_dt(d2, 'row', FALSE)
+
   
 }
 
