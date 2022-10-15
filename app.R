@@ -62,13 +62,15 @@ server = function(input, output) {
     message(d_df$name, "2")
   })
   
-  output$downloadData <- downloadHandler(
+  output$downloadData = downloadHandler(
     filename = function() {
       paste("interventions", ".geojson", sep = "")
     },
     content = function(file) {
-      message(d_df$name, "3")
       geom = edits()$finished
+      if(is.null(geom)) {
+        geom = d_sf
+      }
       geom = sf::st_sf(
         d_df,
         geometry = geom$geometry
