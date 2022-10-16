@@ -20,7 +20,7 @@ if(!file.exists(f_lad)) {
 
 tas = sf::read_sf(f_tas)
 lad = sf::read_sf(f_lad)
-tas = bind_rows(
+tas_combined = bind_rows(
   tas %>% transmute(Name),
   lad %>% transmute(Name = LAD22NM)
 ) |> 
@@ -77,32 +77,26 @@ ui = bs4DashPage(
     conditionalPanel(condition = "input.edit == true", div(style="position:relative; left:calc(25%);",     downloadButton("downloadData", "Download")))
   ),
   bs4DashBody(
-    conditionalPanel(
-      condition = "input.regionedit == false",
-      selectInput(inputId = "region", label = "Select transport or local authority", choices = tas$Name, selected = "Leeds"),
-      checkboxInput(inputId = "regionedit", label = "Region selected", value = FALSE),
-      leafletOutput("leafmap"),
-      ),
-    conditionalPanel(
-      condition = "input.regionedit == true",
-      editModUI("leafmap", width = "100%", height = 800)
-    )    
+    conditionalPanel(condition = "input.region == 'Aberdeen City'",
+                     selectInput(inputId = "region", label = "Select transport or local authority", choices = tas_combined$Name)
+                     ),
+    editModUI("leafmap", width = "100%", height = 800),
     # fillPage()
     )
   )
 
 server = function(input, output, session) {
   
-  output$leafmap = renderLeaflet({
-    tas_new <<- tas[tas$Name == input$region, ]
+  observeEvent(input$region, {
+    if(input$region == "Aberdeen City") {
+      tas_new = tas
+    } else {
+      tas_new <<- tas_combined[tas_combined$Name == input$region, ]
+    }
     bb = sf::st_bbox(tas_new)
     leafmap <<- leaflet() |>
       addTiles() |>
       addPolylines(data = tas_new)
-
-  })
-  
-  observeEvent(input$regionedit, {
     edits <<- callModule(
       editMod,
       leafmap = leafmap,
