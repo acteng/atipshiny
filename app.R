@@ -6,7 +6,25 @@ library(leaflet)
 library(DT)
 library(shinyjs)
 
-tas = sf::read_sf("https://github.com/udsleeds/openinfra/raw/main/data-small/transport_regions_2022.geojson")
+u_tas = "https://github.com/udsleeds/openinfra/raw/main/data-small/transport_regions_2022.geojson"
+f_tas = basename(u_tas)
+if(!file.exists(f_tas)) {
+  download.file(url = u_tas, f_tas)
+}
+  
+u_lad = "https://github.com/udsleeds/openinfra/raw/main/data-small/Local_Authority_Districts_(May_2022)_UK_BSC.geojson"
+f_lad = basename(u_lad)
+if(!file.exists(f_lad)) {
+  download.file(url = u_lad, f_lad)
+}
+
+tas = sf::read_sf(f_tas)
+lad = sf::read_sf(f_lad)
+tas = bind_rows(
+  tas %>% transmute(Name),
+  lad %>% transmute(Name = LAD22NM)
+)
+
 tool_types = c("Areas", "Routes (not yet implemented)", "Crossings (not yet implemented)")
 # Tool types
 task = c("Area tool: Draw the boundaries representing area interventions and click 'Map edits complete' in the togglable left hand sidebar when complete")
@@ -20,10 +38,6 @@ data_input_instructions = paste(collapse = " ",
   "Save the data by pressing Ctrl+Enter and download the data by clicking",
   "the Download button. See demo video here (TBC)."
 )
-
-map = leaflet() |>
-  addTiles() |>
-  addPolylines(data = tas)
 
 dt_output = function(title, id) {
   fluidRow(column(
@@ -62,29 +76,52 @@ ui = bs4DashPage(
     conditionalPanel(condition = "input.edit == true", div(style="position:relative; left:calc(25%);",     downloadButton("downloadData", "Download")))
   ),
   bs4DashBody(
- editModUI("map", width = "100%", height = 800)
-    # fillPage(
-    #   )
+    conditionalPanel(
+      condition = "input.regionedit == false",
+      selectInput(inputId = "region", label = "Select transport or local authority", choices = tas$Name, selected = "Leeds"),
+      checkboxInput(inputId = "regionedit", label = "Region selected", value = FALSE),
+      leafletOutput("leafmap"),
+      ),
+    conditionalPanel(
+      condition = "input.regionedit == true",
+      editModUI("leafmap", width = "100%", height = 800)
+    )    
+    # fillPage()
     )
   )
 
-server = function(input, output) {
+server = function(input, output, session) {
   
-  edits = callModule(
-    editMod,
-    leafmap = map,
-    id = "map"
-  )
+  output$leafmap = renderLeaflet({
+    tas_new <<- tas[tas$Name == input$region, ]
+    bb = sf::st_bbox(tas_new)
+    leafmap <<- leaflet() |>
+      addTiles() |>
+      addPolylines(data = tas_new)
+
+  })
+  
+  observeEvent(input$regionedit, {
+    edits <<- callModule(
+      editMod,
+      leafmap = leafmap,
+      id = "leafmap"
+    )
+  })
 
   output$text = renderText(data_input_instructions)
   d_sf = sf::read_sf("intervention.geojson")
   d_df = sf::st_drop_geometry(d_sf)
-
-  observeEvent(input$edit, {
-    geom = edits()$finished
-    nrows <<- length(geom$geometry)
-    d_df <<- d_df[rep(1, max(1, nrows)), ]
-    output$d_edit = render_dt(d_df, editable = 'all')
+  
+  toListen = reactive({
+    list(input$edit, input$region)
+  })
+  
+  observeEvent(toListen(), {
+      geom = edits()$finished
+      nrows <<- length(geom$geometry)
+      d_df <<- d_df[rep(1, max(1, nrows)), ]
+      output$d_edit = render_dt(d_df, editable = 'all')
   })
 
   # edit a row
