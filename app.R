@@ -23,7 +23,8 @@ lad = sf::read_sf(f_lad)
 tas = bind_rows(
   tas %>% transmute(Name),
   lad %>% transmute(Name = LAD22NM)
-)
+) |> 
+  arrange(Name)
 
 tool_types = c("Areas", "Routes (not yet implemented)", "Crossings (not yet implemented)")
 # Tool types
