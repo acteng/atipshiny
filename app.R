@@ -77,7 +77,8 @@ ui = bs4DashPage(
     conditionalPanel(condition = "input.edit == true", div(style="position:relative; left:calc(25%);",     downloadButton("downloadData", "Download")))
   ),
   bs4DashBody(
-    conditionalPanel(condition = "input.region == 'Aberdeen City'",
+    checkboxInput(inputId = "editregion", label = "Region selected", value = FALSE),
+    conditionalPanel(condition = "input.editregion == false",
                      selectInput(inputId = "region", label = "Select transport or local authority", choices = tas_combined$Name)
                      ),
     editModUI("leafmap", width = "100%", height = 800),
